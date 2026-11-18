@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asistencia QR Sidebar Pro - 3ro BTI "A"</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- SheetJS (XLSX) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f4f6fb;
+      color: #0f172a;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-pop {
+      animation: popIn 0.22s ease-out forwards;
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col lg:flex-row bg-[#f4f6fb] text-slate-900">
+
+  <!-- Toast Notificaciones -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+  <!-- MODAL ESCANEO DIRECTO QR (?qr=3BTA-XX) -->
+  <div id="direct-qr-modal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+    <div class="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center animate-pop relative">
+      <button onclick="closeDirectQRModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center">✕</button>
+      <span class="text-[10px] font-extrabold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block mb-3">
+        Unidad Educativa “Bolívar”
+      </span>
+      <h3 id="direct-qr-name" class="text-base font-extrabold text-slate-900 mb-1 leading-snug">ESTUDIANTE</h3>
+      <p id="direct-qr-code" class="text-xs font-mono-code font-bold text-blue-600 mb-4">3BTA-01</p>
+      <div id="direct-qr-action" class="space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODELO ESTRUCTURAL 1: BARRA LATERAL EJECUTIVA (SIDEBAR)    -->
+  <!-- ========================================================= -->
+  <aside class="w-full lg:w-72 bg-slate-900 text-white flex flex-col justify-between shrink-0 no-print lg:min-h-screen lg:sticky lg:top-0">
+    <div class="p-5 space-y-6">
+      <!-- Marca Institucional -->
+      <div class="flex items-center gap-3 pb-4 border-b border-slate-800">
+        <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-base shadow-lg shadow-blue-600/30">
+          QR
+        </div>
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-blue-400 block">U.E. “Bolívar”</span>
+          <h1 class="text-sm font-extrabold leading-tight">3ro BTI “A”</h1>
+          <span class="text-[11px] text-slate-400">Sistemas Op. y Redes</span>
+        </div>
+      </div>
+
+      <!-- Menú de Navegación Vertical -->
+      <nav class="space-y-1.5">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2">Módulos del Sistema</p>
+        <button onclick="switchTab('asistencia')" id="nav-asistencia" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-md transition">
+          <span>📋</span>
+          <span>Toma de Lista en Vivo</span>
+        </button>
+        <button onclick="switchTab('carnets')" id="nav-carnets" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition">
+          <span>🪪</span>
+          <span>Carnets QR (1 al 22)</span>
+        </button>
+        <button onclick="switchTab('sabana')" id="nav-sabana" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition">
+          <span>📊</span>
+          <span>Sábana Consolidada</span>
+        </button>
+      </nav>
+
+      <!-- Panel Resumen en Vivo en el Sidebar -->
+      <div class="bg-slate-800/70 border border-slate-700/70 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold text-slate-300">Progreso de Clase</span>
+          <span id="sidebar-percent" class="text-xs font-mono-code font-extrabold text-emerald-400">0%</span>
+        </div>
+        <!-- Barra de progreso -->
+        <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+          <div id="sidebar-progress-bar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <div class="bg-slate-900/90 rounded-xl p-2.5 text-center border border-slate-700/50">
+            <span id="sidebar-present-num" class="text-lg font-black text-emerald-400 block leading-none">0</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase mt-1 block">Presentes</span>
+          </div>
+          <div class="bg-slate-900/90 rounded-xl p-2.5 text-center border border-slate-700/50">
+            <span id="sidebar-absent-num" class="text-lg font-black text-rose-400 block leading-none">22</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase mt-1 block">Faltas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pie del Sidebar: Docente y Exportar -->
+    <div class="p-5 border-t border-slate-800 space-y-3">
+      <div class="text-[11px] text-slate-400">
+        <span class="block text-slate-500 text-[10px] uppercase font-bold">Docente Responsable:</span>
+        <strong class="text-slate-200">Lic. Wilson Fonseca Torres</strong>
+        <span class="block text-[10px] text-slate-500 mt-0.5">Lab. Computación 3</span>
+      </div>
+      <button onclick="exportToExcel()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+        <span>📥 Descargar Excel (.xlsx)</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========================================================= -->
+  <!-- ÁREA DE TRABAJO PRINCIPAL (DERECHA)                       -->
+  <!-- ========================================================= -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- BARRA SUPERIOR DE SESIÓN Y CRONÓMETRO 3 MINUTOS -->
+    <header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 sticky top-0 z-30 no-print">
+      <div class="max-w-6xl mx-auto flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        
+        <!-- Selector de las 4 Clases Oficiales -->
+        <div class="flex-1 space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Sesiones Oficiales (Hasta 29/11/2026)</span>
+            <span id="live-clock" class="text-xs font-mono-code font-bold text-slate-500">--:--:--</span>
+          </div>
+          <select id="class-selector" onchange="onClassChange()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-600">
+            <!-- Rellenado por JS -->
+          </select>
+        </div>
+
+        <!-- Módulo Cronómetro 3 Minutos -->
+        <div class="bg-slate-900 text-white rounded-2xl px-4 py-2.5 flex items-center justify-between gap-4 shadow-sm shrink-0">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="timer-badge" class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">LISTO · 3 MIN</span>
+            </div>
+            <div id="timer-display" class="text-2xl font-mono-code font-extrabold tracking-tight text-white">03:00</div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="startTimer()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl transition">
+              ▶ Iniciar
+            </button>
+            <button onclick="resetTimer()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-2 rounded-xl transition" title="Reiniciar 3:00">
+              ↺
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- CONTENIDO DE VISTAS -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+      <!-- ALERTA DE TIEMPO AGOTADO -->
+      <div id="expired-banner" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-xs font-bold flex items-center justify-between animate-pop no-print">
+        <span>🔒 Tiempo de 3 minutos finalizado. Los estudiantes sin registro quedan automáticamente con Falta (F).</span>
+        <button onclick="unlockTimerDocente()" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl font-extrabold transition">
+          Desbloquear (Docente)
+        </button>
+      </div>
+
+      <!-- ======================================================= -->
+      <!-- VISTA 1: ASISTENCIA (VISOR HORIZONTAL + CUADRÍCULA)     -->
+      <!-- ======================================================= -->
+      <section id="view-asistencia" class="space-y-6">
+
+        <!-- TARJETA HORIZONTAL DE ESTACIÓN QR -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col md:flex-row items-center gap-6">
+          
+          <!-- QR a la izquierda -->
+          <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-col items-center shrink-0">
+            <div id="qr-canvas-box"></div>
+            <span id="qr-url-label" class="text-[10px] font-mono-code font-bold text-slate-500 mt-1.5">3BTA-01</span>
+          </div>
+
+          <!-- Datos y Acción al centro -->
+          <div class="flex-1 text-center md:text-left space-y-2.5 w-full">
+            <div class="flex flex-wrap items-center justify-center md:justify-start gap-2">
+              <span id="card-num-badge" class="bg-slate-900 text-white text-xs font-mono-code font-bold px-2.5 py-1 rounded-lg">N.º 01</span>
+              <span id="card-code-badge" class="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-mono-code font-bold px-2.5 py-1 rounded-lg">3BTA-01</span>
+              <span id="card-status-pill" class="text-xs font-extrabold px-3 py-1 rounded-lg bg-rose-100 text-rose-700">FALTA (F)</span>
+            </div>
+
+            <h2 id="card-student-name" class="text-lg sm:text-xl font-black text-slate-900 leading-snug">
+              ARBOLEDA LOAIZA TIFFANI VALERIA
+            </h2>
+
+            <div class="flex flex-wrap items-center justify-center md:justify-start gap-2.5 pt-1">
+              <button onclick="toggleCurrentStudentAttendance()" id="btn-mark-present" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-sm transition active:scale-95">
+                ✔ Marcar Presente (P)
+              </button>
+              <button onclick="navigateStudent(-1)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl transition">
+                ◀ Anterior
+              </button>
+              <button onclick="navigateStudent(1)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl transition">
+                Siguiente ▶
+              </button>
+            </div>
+          </div>
+
+          <!-- Matriz Rápida 1..22 a la derecha -->
+          <div class="w-full md:w-56 shrink-0 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-5">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2 text-center md:text-left">Salto Rápido (1-22)</span>
+            <div id="quick-grid" class="grid grid-cols-6 gap-1"></div>
+          </div>
+
+        </div>
+
+
+        <!-- REGISTRO POR CÓDIGO -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm no-print">
+          <h3 class="text-sm font-black text-slate-900">Registrar por código</h3>
+          <p class="text-xs text-slate-500 mb-3">Escribe el código del carnet (o usa un escáner USB) y presiona Enter: queda <strong>Presente</strong>. Quien no se registre queda en <strong>Falta</strong>.</p>
+          <input id="scan-input" type="text" autocomplete="off" placeholder="Ej: 3BTA-05 o solo 5" onkeydown="if(event.key==='Enter'){handleScanned(this.value);this.value='';}" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-mono-code font-bold focus:outline-none focus:border-blue-600">
+          <p id="scan-status" class="text-xs font-bold text-slate-500 mt-2">Listo.</p>
+        </div>
+
+        <!-- BARRA DE FILTROS DINÁMICOS (PRESENTES vs FALTAS vs TODOS) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button onclick="setFilterMode('ALL')" id="filter-btn-ALL" class="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-slate-900 text-white transition">
+              Todos (<span id="count-all">22</span>)
+            </button>
+            <button onclick="setFilterMode('P')" id="filter-btn-P" class="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">
+              ✔ Presentes (<span id="count-present">0</span>)
+            </button>
+            <button onclick="setFilterMode('F')" id="filter-btn-F" class="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-rose-50 text-rose-700 hover:bg-rose-100 transition">
+              ✖ Faltas (<span id="count-absent">22</span>)
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input type="text" id="search-input" oninput="renderStudentCardsGrid()" placeholder="Buscar apellido o código..." class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500 w-full sm:w-52">
+            <button onclick="resetClassAttendance()" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 transition shrink-0">
+              Reset F
+            </button>
+          </div>
+        </div>
+
+        <!-- CUADRÍCULA DE TARJETAS DE ESTUDIANTES (MODELO GRID CARDS) -->
+        <div id="students-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <!-- Rellenado dinámicamente -->
+        </div>
+
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- VISTA 2: CARNETS QR IMPRIMIBLES                         -->
+      <!-- ======================================================= -->
+      <section id="view-carnets" class="hidden space-y-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <div>
+            <h3 class="text-sm font-black text-slate-900">Carnets Oficiales con Código QR (1 al 22)</h3>
+            <p class="text-xs text-slate-500">Imprime los carnets; en "Toma de Lista" registra cada código para marcar Presente</p>
+          </div>
+          <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition shadow-sm">
+            🖨️ Imprimir Carnets
+          </button>
+        </div>
+        <div id="print-area" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- VISTA 3: SÁBANA CONSOLIDADA                             -->
+      <!-- ======================================================= -->
+      <section id="view-sabana" class="hidden space-y-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div>
+            <h3 class="text-sm font-black text-slate-900">Sábana Consolidada (Clases 23 a 26)</h3>
+            <p class="text-xs text-slate-500">Sistemas Operativos y Redes · 3ro BTI “A”</p>
+          </div>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition">
+            📥 Descargar Excel (.xlsx)
+          </button>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table id="sabana-table" class="w-full text-left border-collapse text-xs"></table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // NÓMINA OFICIAL 3RO BTI "A"
+    const STUDENTS = [
+      { num: 1, code: "3BTA-01", name: "ARBOLEDA LOAIZA TIFFANI VALERIA" },
+      { num: 2, code: "3BTA-02", name: "BOLAÑOS QUIÑONEZ CRISMARI JAVIETH" },
+      { num: 3, code: "3BTA-03", name: "BUENAÑO ACURIO MARCOS JOSUE" },
+      { num: 4, code: "3BTA-04", name: "CAÑAR PUNINA VANESSA ANAHI" },
+      { num: 5, code: "3BTA-05", name: "CHAMBA LEMA DAFNE MONSERRATH" },
+      { num: 6, code: "3BTA-06", name: "CHANGO CAIZA JAFET EMMANUEL" },
+      { num: 7, code: "3BTA-07", name: "COLLAGUAZO NINACURI JEFERSON ALEXANDER" },
+      { num: 8, code: "3BTA-08", name: "FAVICELA TIVIANO ALEX GEOVANNY" },
+      { num: 9, code: "3BTA-09", name: "GUANGASI TIRADO THALIA AURORA" },
+      { num: 10, code: "3BTA-10", name: "JIMENEZ OROSCO LUIS FERNANDO" },
+      { num: 11, code: "3BTA-11", name: "LAZ GARCES ERICK ALEXANDER" },
+      { num: 12, code: "3BTA-12", name: "LIZANO VILLARREAL VICTORIA NICOLE" },
+      { num: 13, code: "3BTA-13", name: "OCHOA SANGUCHO ALAN ANDRÉS" },
+      { num: 14, code: "3BTA-14", name: "PIMBOMAZA TUBON EDISON ALEXANDER" },
+      { num: 15, code: "3BTA-15", name: "QUISHPE UQUILLAS HILARY LESSETTE" },
+      { num: 16, code: "3BTA-16", name: "SAMANIEGO SANCHEZ MAYKEL ALEJANDRO" },
+      { num: 17, code: "3BTA-17", name: "TIVANLOMBO RAMOS YARVIS JASAEL" },
+      { num: 18, code: "3BTA-18", name: "TIVIANO CHIMBO CHRISTOPHER JOEL" },
+      { num: 19, code: "3BTA-19", name: "VILLEGAS PINOS MAYKEL GABRIEL" },
+      { num: 20, code: "3BTA-20", name: "YANCHAPANTA CRIOLLO INGRID BELEN" },
+      { num: 21, code: "3BTA-21", name: "YANCHAPANTA YANCHAPANTA MAYKEL STEVE" },
+      { num: 22, code: "3BTA-22", name: "YUGSI TOAQUIZA JOSTIN JARIEL" }
+    ];
+
+    // LAS 4 CLASES OFICIALES (HASTA 29/11/2026)
+    const CLASSES = [
+      { id: "c23", title: "Clase 23", date: "19/11/2026", day: "Jueves", time: "17:30 - 18:50", lab: "Computación 3" },
+      { id: "c24", title: "Clase 24", date: "20/11/2026", day: "Viernes", time: "16:10 - 17:30", lab: "Computación 3" },
+      { id: "c25", title: "Clase 25", date: "26/11/2026", day: "Jueves", time: "17:30 - 18:50", lab: "Computación 3" },
+      { id: "c26", title: "Clase 26", date: "27/11/2026", day: "Viernes", time: "16:10 - 17:30", lab: "Computación 3" }
+    ];
+
+    const STORAGE_KEY = "ueb_sidebar_pro_qr_3min_v1";
+    let appState = {
+      selectedClassId: "c23",
+      attendance: {},
+      timer: { remainingSec: 180, running: false, expired: false }
+    };
+
+    let currentStudentIndex = 0;
+    let currentFilterMode = "ALL"; // 'ALL' | 'P' | 'F'
+    let timerInterval = null;
+
+
+    // QR PRECALCULADOS (incrustados: no necesitan internet). Cada QR contiene el código del estudiante.
+    const QR_DATA = {"3BTA-01":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","010010010010001001111","001010100000100010001","111000000100001000000","010101111000101010100","000000001101010100010","111111101001011101000","100000101111110110101","101110101011011100101","101110100100001100110","101110101000100011101","100000101110001000011","111111101000101010101"],"3BTA-02":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","000011010010001001111","111111110000100010001","101101001010001000000","010001101100101010100","000000001111010100010","111111101101011101000","100000101101110110101","101110101001011100101","101110100000001100110","101110101110100011101","100000101100001110011","111111101110101010101"],"3BTA-03":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","101110001100001001111","101101100110100010001","110101011010001000000","010110110100101010100","000000001011010100010","111111101011011101000","100000101001110110101","101110101011011100101","101110100000001100110","101110101100100011101","100000101110001010011","111111101010101010101"],"3BTA-04":["111111101111101111111","100000101010101000001","101110101000001011101","101110101111001011101","101110100000101011101","100000101101001000001","111111101010101111111","000000000111100000000","110011100101000101111","000100011111100100010","001110110001001111100","001100011010011010010","101001100100111000110","000000001010111001111","111111100010110000101","100000101101100100111","101110101111001110111","101110100011100001011","101110100101001110000","100000101010011110001","111111101110111100111"],"3BTA-05":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","000100001100001001111","110001101010100010001","000110011000001000000","111100101110101010100","000000001011010100010","111111101001011101000","100000101011110110101","101110101111011100101","101110100110001100110","101110101010100011101","100000101010001000011","111111101000101110101"],"3BTA-06":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","010101001100001001111","000100111010100010001","010011010110001000000","111000111010101010100","000000001001010100010","111111101101011101000","100000101001110110101","101110101101011100101","101110100010001100110","101110101100100011101","100000101000001110011","111111101110101110101"],"3BTA-07":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","111000010010001001111","010110101100100010001","001011000110001000000","111111100010101010100","000000001101010100010","111111101011011101000","100000101101110110101","101110101111011100101","101110100010001100110","101110101110100011101","100000101010001010011","111111101010101110101"],"3BTA-08":["111111100101101111111","100000101101001000001","101110101100101011101","101110100101001011101","101110101000101011101","100000101001101000001","111111101010101111111","000000001111100000000","110100110110001110110","011100000010001001111","010111110000110000011","001110000101000001001","101110111110101010100","000000001001000110000","111111101010010100001","100000100111110110101","101110100101001110111","101110101001000101111","101110100110100011101","100000101010011110001","111111101001100001100"],"3BTA-09":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","110001011100001001111","010111110100100010001","011111011100001000000","101001100110101010100","000000001111010100010","111111101101011101000","100000101011110110101","101110101101011100101","101110100000001100110","101110101100100011101","100000101010001000011","111111101100101000101"],"3BTA-10":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","000000000010001001111","011011110000100010001","001111001010001000000","111110111110101010100","000000001111010100010","111111101111011101000","100000101001110110101","101110101101011100101","101110100100001100110","101110101010100011101","100000101100001101111","111111101110101010101"],"3BTA-11":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","101101011100001001111","001001100110100010001","010111011010001000000","111001100110101010100","000000001011010100010","111111101001011101000","100000101101110110101","101110101111011100101","101110100100001100110","101110101000100011101","100000101110001001111","111111101010101010101"],"3BTA-12":["111111101011101111111","100000100011001000001","101110101101001011101","101110101100101011101","101110101001001011101","100000100111101000001","111111101010101111111","000000000001100000000","111100101111110011101","001101001101111000001","011111110101000001101","000101010011001111000","110011111100100100101","000000001101001000001","111111100101100101111","100000100110000111011","101110100110111111001","101110101111001011110","101110101000101101100","100000101000010011100","111111101100010010010"],"3BTA-13":["111111100101101111111","100000101101001000001","101110101100101011101","101110100101001011101","101110101000101011101","100000101001101000001","111111101010101111111","000000001111100000000","110100110110001110110","010001000010001001111","111100110010110000011","010011001101000001001","111010101010101010100","000000001111000110000","111111101010010100001","100000100011110110101","101110100101001110111","101110101001000101111","101110100100100011101","100000101100011001101","111111101001100011100"],"3BTA-14":["111111101011101111111","100000100011001000001","101110101101001011101","101110101100101011101","101110101001001011101","100000100111101000001","111111101010101111111","000000000001100000000","111100101111110011101","100111001101111000001","000011111001000001101","110110010001001111000","011001100110100100101","000000001101001000001","111111100111100101111","100000100100000111011","101110100010111111001","101110101001001011110","101110101110101101100","100000101100010001100","111111101110010110010"],"3BTA-15":["111111101111101111111","100000101010101000001","101110101000001011101","101110101111001011101","101110100000101011101","100000101101001000001","111111101010101111111","000000000111100000000","110011100101000101111","010110001111100100010","011111100001001111100","111011010100011010010","000010100010111000110","000000001000111001111","111111100100110000101","100000101011100100111","101110101001001110111","101110100011100001011","101110100111001110000","100000101000011011101","111111101000111100111"],"3BTA-16":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","101010000010001001111","000111111100100010001","111100001000001000000","010100100100101010100","000000001111010100010","111111101101011101000","100000101011110110101","101110101001011100101","101110100010001100110","101110101100100011101","100000101000001111111","111111101100101110101"],"3BTA-17":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","000111011100001001111","010101101010100010001","100100011000001000000","010011111100101010100","000000001011010100010","111111101011011101000","100000101111110110101","101110101011011100101","101110100010001100110","101110101110100011101","100000101010001011111","111111101000101110101"],"3BTA-18":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","100011001100001001111","000110100100100010001","101000010010001000000","000010100000101010100","000000001101010100010","111111101011011101000","100000101101110110101","101110101011011100101","101110100000001100110","101110101110100011101","100000101000001101111","111111101010101000101"],"3BTA-19":["111111100101101111111","100000101101001000001","101110101100101011101","101110100101001011101","101110101000101011101","100000101001101000001","111111101010101111111","000000001111100000000","110100110110001110110","001110010010001001111","000110100000110000011","111001001011000001001","000101111000101010100","000000001011000110000","111111101100010100001","100000100001110110101","101110100011001110111","101110101001000101111","101110100100100011101","100000101000011011101","111111101111100001100"],"3BTA-20":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","101010010110001001111","011001100100100010001","000101000110001000000","000110110010101010100","000000001011010100010","111111101111011101000","100000101101110110101","101110101011011100101","101110100010001100110","101110101100100011101","100000101000001100111","111111101010101010101"],"3BTA-21":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","000111001000001001111","001011110010100010001","011101010110001000000","000001101010101010100","000000001111010100010","111111101001011101000","100000101001110110101","101110101001011100101","101110100010001100110","101110101110100011101","100000101010001000111","111111101110101010101"],"3BTA-22":["111111100101101111111","100000100111001000001","101110101101101011101","101110100101001011101","101110100010101011101","100000100000101000001","111111101010101111111","000000001101100000000","111011111111011000100","010110001000001001111","111110100010100010001","001000011000001000000","000101111110101010100","000000001101010100010","111111101101011101000","100000101011110110101","101110101011011100101","101110100110001100110","101110101000100011101","100000101000001110111","111111101000101010101"]};
+
+    function qrSvg(code, px) {
+      const m = QR_DATA[code];
+      if (!m) return "";
+      const n = m.length, q = 4, N = n + 2 * q;
+      let d = "";
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (m[r][c] === "1") d += `M${c + q} ${r + q}h1v1h-1z`;
+      }
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges"><rect width="${N}" height="${N}" fill="#fff"/><path d="${d}" fill="#0f172a"/></svg>`;
+    }
+
+    // REGISTRO POR CÓDIGO
+    let lastScan = { code: "", t: 0 };
+
+    function setScanStatus(msg, ok) {
+      const el = document.getElementById("scan-status");
+      el.textContent = msg;
+      el.className = "text-xs font-bold " + (ok === true ? "text-emerald-700" : ok === false ? "text-rose-700" : "text-slate-500");
+    }
+
+    function parseCode(raw) {
+      let t = String(raw || "").trim().toUpperCase();
+      const m = t.match(/3BTA-\d{2}/);
+      if (m) return m[0];
+      if (/^\d{1,2}$/.test(t)) return "3BTA-" + t.padStart(2, "0");
+      return null;
+    }
+
+    function handleScanned(raw) {
+      const code = parseCode(raw);
+      if (!code) { setScanStatus("Código no reconocido: " + raw, false); return; }
+      const st = STUDENTS.find(s => s.code === code);
+      if (!st) { setScanStatus("Estudiante no encontrado: " + code, false); return; }
+      const now = Date.now();
+      if (lastScan.code === code && now - lastScan.t < 2500) return;
+      lastScan = { code, t: now };
+      if (appState.timer.expired) { setScanStatus("🔒 Registro cerrado (3 min).", false); showToast("🔒 Registro cerrado.", "error"); return; }
+      currentStudentIndex = st.num - 1;
+      const rec = appState.attendance[appState.selectedClassId][code];
+      if (rec && rec.status === "P") {
+        setScanStatus("✔ " + st.name + " ya estaba Presente (" + rec.time + ").", true);
+        renderStudentStation();
+        return;
+      }
+      setStudentStatusDirect(code, "P");
+      setScanStatus("✔ " + st.name + " → PRESENTE", true);
+    }
+
+
+    function initApp() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { appState = JSON.parse(saved); } catch (e) {}
+      }
+
+      CLASSES.forEach(cls => {
+        if (!appState.attendance[cls.id]) {
+          appState.attendance[cls.id] = {};
+          STUDENTS.forEach(st => {
+            appState.attendance[cls.id][st.code] = { status: "F", time: null };
+          });
+        }
+      });
+      if (!appState.timer) appState.timer = { remainingSec: 180, running: false, expired: false };
+
+      saveState();
+      renderClassSelector();
+      renderStudentStation();
+      renderStudentCardsGrid();
+      updateSidebarMetrics();
+      updateTimerUI();
+      checkUrlParamQR();
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    }
+
+    function getExactTime() {
+      return new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    }
+
+    // RELOJ EN VIVO
+    setInterval(() => {
+      document.getElementById("live-clock").textContent = getExactTime();
+    }, 1000);
+
+    // CAMBIO DE MÓDULOS EN EL SIDEBAR
+    function switchTab(tab) {
+      ["asistencia", "carnets", "sabana"].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add("hidden");
+        document.getElementById(`nav-${t}`).className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition";
+      });
+      document.getElementById(`view-${tab}`).classList.remove("hidden");
+      document.getElementById(`nav-${tab}`).className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-md transition";
+
+      if (tab === "sabana") renderSabanaTable();
+      if (tab === "carnets") renderCarnetsGrid();
+    }
+
+    function renderClassSelector() {
+      const sel = document.getElementById("class-selector");
+      sel.innerHTML = "";
+      CLASSES.forEach(cls => {
+        const opt = document.createElement("option");
+        opt.value = cls.id;
+        opt.textContent = `${cls.title} · ${cls.day} ${cls.date} (${cls.time}) · ${cls.lab}`;
+        if (cls.id === appState.selectedClassId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    function onClassChange() {
+      appState.selectedClassId = document.getElementById("class-selector").value;
+      saveState();
+      renderStudentStation();
+      renderStudentCardsGrid();
+      updateSidebarMetrics();
+    }
+
+    // CRONÓMETRO 3 MINUTOS (180s)
+    function formatTime(sec) {
+      const m = String(Math.floor(sec / 60)).padStart(2, "0");
+      const s = String(sec % 60).padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function updateTimerUI() {
+      const t = appState.timer;
+      document.getElementById("timer-display").textContent = formatTime(t.remainingSec);
+      const badge = document.getElementById("timer-badge");
+      const banner = document.getElementById("expired-banner");
+
+      if (t.expired) {
+        badge.textContent = "CERRADO";
+        badge.className = "text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-rose-500/20 text-rose-300";
+        banner.classList.remove("hidden");
+      } else if (t.running) {
+        badge.textContent = "EN CURSO (3 MIN)";
+        badge.className = "text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 animate-pulse";
+        banner.classList.add("hidden");
+      } else {
+        badge.textContent = "LISTO · 3 MIN";
+        badge.className = "text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300";
+        banner.classList.add("hidden");
+      }
+    }
+
+    function startTimer() {
+      const t = appState.timer;
+      t.remainingSec = 180;
+      t.running = true;
+      t.expired = false;
+      saveState();
+      updateTimerUI();
+      showToast("▶ Cronómetro de 3 minutos iniciado.", "success");
+
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!t.running) return;
+        if (t.remainingSec > 0) {
+          t.remainingSec--;
+          if (t.remainingSec <= 0) {
+            t.running = false;
+            t.expired = true;
+            showToast("🔒 Tiempo de 3 minutos agotado. Registro cerrado.", "error");
+          }
+          saveState();
+          updateTimerUI();
+        }
+      }, 1000);
+    }
+
+    function resetTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      appState.timer = { remainingSec: 180, running: false, expired: false };
+      saveState();
+      updateTimerUI();
+      showToast("Cronómetro reiniciado a 03:00.", "info");
+    }
+
+    function unlockTimerDocente() {
+      appState.timer = { remainingSec: 180, running: false, expired: false };
+      saveState();
+      updateTimerUI();
+      showToast("🔓 Desbloqueado por el docente.", "success");
+    }
+
+    // ESTACIÓN HORIZONTAL QR
+    function renderStudentStation() {
+      const st = STUDENTS[currentStudentIndex];
+      const rec = appState.attendance[appState.selectedClassId][st.code] || { status: "F", time: null };
+
+      document.getElementById("card-num-badge").textContent = `N.º ${String(st.num).padStart(2, "0")}`;
+      document.getElementById("card-code-badge").textContent = st.code;
+      document.getElementById("card-student-name").textContent = st.name;
+      document.getElementById("qr-url-label").textContent = st.code;
+
+      const pill = document.getElementById("card-status-pill");
+      const btn = document.getElementById("btn-mark-present");
+
+      if (rec.status === "P") {
+        pill.textContent = `PRESENTE (P) · ${rec.time}`;
+        pill.className = "text-xs font-extrabold px-3 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200";
+        btn.textContent = "✔ Presente Registrado (Cambiar a F)";
+        btn.className = "bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition";
+      } else {
+        pill.textContent = "FALTA (F)";
+        pill.className = "text-xs font-extrabold px-3 py-1 rounded-lg bg-rose-100 text-rose-700 border border-rose-200";
+        btn.textContent = "✔ Marcar Presente (P)";
+        btn.className = "bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-sm transition active:scale-95";
+      }
+
+      document.getElementById("qr-canvas-box").innerHTML = qrSvg(st.code, 112);
+
+      renderQuickGrid();
+    }
+
+    function renderQuickGrid() {
+      const grid = document.getElementById("quick-grid");
+      grid.innerHTML = "";
+      const classAtt = appState.attendance[appState.selectedClassId];
+
+      STUDENTS.forEach((st, idx) => {
+        const isP = classAtt[st.code]?.status === "P";
+        const isSel = idx === currentStudentIndex;
+
+        let cls = "bg-slate-100 text-slate-600 hover:bg-slate-200";
+        if (isP) cls = "bg-emerald-500 text-white font-extrabold";
+        if (isSel) cls += " ring-2 ring-blue-600";
+
+        const btn = document.createElement("button");
+        btn.textContent = st.num;
+        btn.className = `py-1 rounded text-[10px] font-mono-code font-bold transition ${cls}`;
+        btn.onclick = () => { currentStudentIndex = idx; renderStudentStation(); };
+        grid.appendChild(btn);
+      });
+    }
+
+    function navigateStudent(dir) {
+      currentStudentIndex += dir;
+      if (currentStudentIndex < 0) currentStudentIndex = STUDENTS.length - 1;
+      if (currentStudentIndex >= STUDENTS.length) currentStudentIndex = 0;
+      renderStudentStation();
+    }
+
+    function toggleCurrentStudentAttendance() {
+      if (appState.timer.expired) {
+        showToast("🔒 Registro cerrado (3 minutos expirados).", "error");
+        return;
+      }
+      const st = STUDENTS[currentStudentIndex];
+      const current = appState.attendance[appState.selectedClassId][st.code].status;
+      const next = current === "P" ? "F" : "P";
+      setStudentStatusDirect(st.code, next);
+    }
+
+    function setStudentStatusDirect(code, status) {
+      if (appState.timer.expired) {
+        showToast("🔒 Registro cerrado (3 minutos expirados).", "error");
+        return;
+      }
+      const time = status === "P" ? getExactTime() : null;
+      appState.attendance[appState.selectedClassId][code] = { status, time };
+      saveState();
+      renderStudentStation();
+      renderStudentCardsGrid();
+      updateSidebarMetrics();
+
+      const st = STUDENTS.find(s => s.code === code);
+      showToast(`${st.name.split(" ")[0]} → ${status === "P" ? "Presente (" + time + ")" : "Falta (F)"}`, status === "P" ? "success" : "error");
+    }
+
+    // FILTROS Y CUADRÍCULA DE TARJETAS DE ESTUDIANTES
+    function setFilterMode(mode) {
+      currentFilterMode = mode;
+      ["ALL", "P", "F"].forEach(m => {
+        const btn = document.getElementById(`filter-btn-${m}`);
+        if (m === mode) {
+          btn.className = m === "P" ? "px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 text-white shadow-sm transition" :
+                          m === "F" ? "px-3.5 py-2 rounded-xl text-xs font-extrabold bg-rose-600 text-white shadow-sm transition" :
+                                      "px-3.5 py-2 rounded-xl text-xs font-extrabold bg-slate-900 text-white shadow-sm transition";
+        } else {
+          btn.className = m === "P" ? "px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition" :
+                          m === "F" ? "px-3.5 py-2 rounded-xl text-xs font-extrabold bg-rose-50 text-rose-700 hover:bg-rose-100 transition" :
+                                      "px-3.5 py-2 rounded-xl text-xs font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+        }
+      });
+      renderStudentCardsGrid();
+    }
+
+    function renderStudentCardsGrid() {
+      const container = document.getElementById("students-cards-grid");
+      const query = (document.getElementById("search-input")?.value || "").toLowerCase().trim();
+      const classAtt = appState.attendance[appState.selectedClassId];
+
+      container.innerHTML = "";
+
+      let countP = 0;
+      let countF = 0;
+
+      STUDENTS.forEach(st => {
+        const rec = classAtt[st.code] || { status: "F", time: null };
+        if (rec.status === "P") countP++; else countF++;
+      });
+
+      document.getElementById("count-present").textContent = countP;
+      document.getElementById("count-absent").textContent = countF;
+
+      const filtered = STUDENTS.filter(st => {
+        const rec = classAtt[st.code] || { status: "F" };
+        if (currentFilterMode !== "ALL" && rec.status !== currentFilterMode) return false;
+        if (query && !st.name.toLowerCase().includes(query) && !st.code.toLowerCase().includes(query) && String(st.num) !== query) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="col-span-full bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs font-bold text-slate-400">No hay estudiantes en esta categoría.</div>`;
+        return;
+      }
+
+      filtered.forEach(st => {
+        const rec = classAtt[st.code] || { status: "F", time: null };
+        const isP = rec.status === "P";
+
+        const card = document.createElement("div");
+        card.className = `bg-white border rounded-2xl p-4 flex flex-col justify-between gap-3 transition shadow-sm hover:shadow-md ${
+          isP ? "border-emerald-300 bg-emerald-50/20" : "border-slate-200"
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2 cursor-pointer" onclick="currentStudentIndex=${st.num-1}; renderStudentStation(); window.scrollTo({top:0, behavior:'smooth'});">
+            <div>
+              <div class="flex items-center gap-1.5 mb-1">
+                <span class="text-[10px] font-mono-code font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">#${String(st.num).padStart(2, "0")}</span>
+                <span class="text-[10px] font-mono-code font-bold text-blue-600">${st.code}</span>
+              </div>
+              <h4 class="text-xs font-extrabold text-slate-900 leading-snug hover:text-blue-600">${st.name}</h4>
+            </div>
+            <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg shrink-0 ${
+              isP ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
+            }">
+              ${isP ? "PRESENTE" : "FALTA"}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between pt-2.5 border-t border-slate-100">
+            <span class="text-[11px] font-mono-code text-slate-500">
+              ${isP ? "🕒 " + rec.time : "Sin registro"}
+            </span>
+            <button onclick="setStudentStatusDirect('${st.code}', '${isP ? "F" : "P"}')" class="text-[11px] font-extrabold px-3 py-1.5 rounded-xl transition ${
+              isP ? "bg-slate-100 text-slate-600 hover:bg-rose-100 hover:text-rose-700" : "bg-emerald-600 text-white hover:bg-emerald-500"
+            }">
+              ${isP ? "Marcar F" : "✔ Marcar P"}
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateSidebarMetrics() {
+      const classAtt = appState.attendance[appState.selectedClassId];
+      let p = 0;
+      STUDENTS.forEach(st => { if (classAtt[st.code]?.status === "P") p++; });
+      const f = STUDENTS.length - p;
+      const pct = Math.round((p / STUDENTS.length) * 100);
+
+      document.getElementById("sidebar-present-num").textContent = p;
+      document.getElementById("sidebar-absent-num").textContent = f;
+      document.getElementById("sidebar-percent").textContent = `${pct}%`;
+      document.getElementById("sidebar-progress-bar").style.width = `${pct}%`;
+    }
+
+    function resetClassAttendance() {
+      STUDENTS.forEach(st => {
+        appState.attendance[appState.selectedClassId][st.code] = { status: "F", time: null };
+      });
+      saveState();
+      renderStudentStation();
+      renderStudentCardsGrid();
+      updateSidebarMetrics();
+      showToast("Todos los estudiantes pasaron a Falta (F).", "info");
+    }
+
+    // CARNETS QR IMPRIMIBLES
+    function renderCarnetsGrid() {
+      const area = document.getElementById("print-area");
+      area.innerHTML = "";
+
+      STUDENTS.forEach(st => {
+        const div = document.createElement("div");
+        div.className = "bg-white text-slate-900 p-4 rounded-2xl border border-slate-300 shadow-sm flex flex-col items-center text-center justify-between";
+        div.innerHTML = `
+          <div class="w-full">
+            <div class="flex justify-between text-[10px] font-extrabold text-slate-500 mb-1">
+              <span>UNIDAD EDUCATIVA “BOLÍVAR”</span>
+              <span class="font-mono-code text-blue-700">${st.code}</span>
+            </div>
+            <h4 class="text-xs font-black leading-tight mb-1">${st.name}</h4>
+          </div>
+          <div id="print-qr-${st.code}" class="my-2 p-2 bg-slate-50 rounded-xl border border-slate-200"></div>
+          <div class="text-[10px] font-bold text-slate-600">3ro BTI “A” · Sistemas Operativos y Redes</div>
+        `;
+        area.appendChild(div);
+
+        document.getElementById(`print-qr-${st.code}`).innerHTML = qrSvg(st.code, 96);
+      });
+    }
+
+    // SÁBANA CONSOLIDADA Y EXCEL
+    function renderSabanaTable() {
+      const table = document.getElementById("sabana-table");
+      let html = `<thead class="bg-slate-900 text-white"><tr>
+        <th class="py-3 px-3 text-center">N.º</th>
+        <th class="py-3 px-3">Estudiante</th>`;
+
+      CLASSES.forEach(cls => {
+        html += `<th class="py-3 px-2 text-center">${cls.title}<br><span class="text-[9px] text-slate-400 font-normal">${cls.date}</span></th>`;
+      });
+      html += `<th class="py-3 px-3 text-center">Total P</th></tr></thead><tbody class="divide-y divide-slate-200">`;
+
+      STUDENTS.forEach(st => {
+        html += `<tr class="hover:bg-slate-50"><td class="py-2.5 px-3 text-center font-mono-code font-bold text-slate-500">${st.num}</td><td class="py-2.5 px-3 font-bold text-slate-900">${st.name}</td>`;
+        let totalP = 0;
+        CLASSES.forEach(cls => {
+          const stRec = appState.attendance[cls.id]?.[st.code] || { status: "F" };
+          if (stRec.status === "P") totalP++;
+          html += `<td class="py-2.5 px-2 text-center font-extrabold ${stRec.status === "P" ? "text-emerald-600" : "text-rose-600"}">${stRec.status}</td>`;
+        });
+        html += `<td class="py-2.5 px-3 text-center font-extrabold text-blue-600">${totalP}/4</td></tr>`;
+      });
+
+      html += `</tbody>`;
+      table.innerHTML = html;
+    }
+
+    function exportToExcel() {
+      const wb = XLSX.utils.book_new();
+      const rows = [
+        ['UNIDAD EDUCATIVA “BOLÍVAR” - CONTROL DE ASISTENCIA QR'],
+        ['Curso: 3ro BTI "A" · Asignatura: Sistemas Operativos y Redes · Docente: Lic. Wilson Fonseca Torres'],
+        []
+      ];
+
+      const header = ["N°", "Código", "Estudiante"];
+      CLASSES.forEach(cls => header.push(`${cls.title} (${cls.date})`));
+      header.push("Total Presente");
+      rows.push(header);
+
+      STUDENTS.forEach(st => {
+        const row = [st.num, st.code, st.name];
+        let p = 0;
+        CLASSES.forEach(cls => {
+          const rec = appState.attendance[cls.id]?.[st.code] || { status: "F" };
+          row.push(rec.status);
+          if (rec.status === "P") p++;
+        });
+        row.push(p);
+        rows.push(row);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, "Asistencia Clases 23-26");
+      XLSX.writeFile(wb, "Asistencia_QR_3roBTI_A_SistemasOperativos.xlsx");
+      showToast("Archivo Excel (.xlsx) descargado.", "success");
+    }
+
+    // DETECCIÓN URL QR (?qr=3BTA-XX)
+    function checkUrlParamQR() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("qr");
+      if (!code) return;
+
+      const st = STUDENTS.find(s => s.code === code);
+      if (!st) return;
+
+      currentStudentIndex = st.num - 1;
+      renderStudentStation();
+
+      const modal = document.getElementById("direct-qr-modal");
+      document.getElementById("direct-qr-name").textContent = st.name;
+      document.getElementById("direct-qr-code").textContent = st.code;
+
+      const rec = appState.attendance[appState.selectedClassId][st.code];
+      const action = document.getElementById("direct-qr-action");
+
+      if (appState.timer.expired) {
+        action.innerHTML = `<p class="text-xs text-rose-700 font-bold bg-rose-50 border border-rose-200 p-3 rounded-xl">La ventana de 3 minutos ha terminado. Registro bloqueado.</p>`;
+      } else if (rec.status === "P") {
+        action.innerHTML = `<p class="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 p-3 rounded-xl">✔ Ya registrado como Presente a las ${rec.time}.</p>`;
+      } else {
+        action.innerHTML = `
+          <button onclick="confirmDirectQR('${st.code}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm py-3.5 rounded-xl shadow-md transition">
+            ✔ CONFIRMAR ASISTENCIA (P)
+          </button>
+        `;
+      }
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function confirmDirectQR(code) {
+      setStudentStatusDirect(code, "P");
+      closeDirectQRModal();
+    }
+
+    function closeDirectQRModal() {
+      document.getElementById("direct-qr-modal").classList.add("hidden");
+      document.getElementById("direct-qr-modal").classList.remove("flex");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toast-container");
+      const div = document.createElement("div");
+      div.className = `px-4 py-3 rounded-xl shadow-lg text-xs font-extrabold border animate-pop ${
+        type === "success" ? "bg-emerald-900 text-white border-emerald-700" :
+        type === "error" ? "bg-rose-900 text-white border-rose-700" : "bg-slate-900 text-white border-slate-700"
+      }`;
+      div.textContent = msg;
+      container.appendChild(div);
+      setTimeout(() => div.remove(), 3000);
+    }
+
+    window.addEventListener("DOMContentLoaded", initApp);
+  </script>
+</body>
+</html>

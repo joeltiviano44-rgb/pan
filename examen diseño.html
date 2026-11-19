@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unidad Educativa Nuevo Horizonte</title>
+<style>
+:root{--azul:#12355b;--cielo:#e8f1f8;--sol:#f2b134;--verde:#2e7d5b;--texto:#1d2733;--blanco:#fff}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Georgia,"Times New Roman",serif;color:var(--texto);background:var(--blanco);line-height:1.6}
+h1,h2,h3,nav,.btn{font-family:"Trebuchet MS",Arial,sans-serif}
+a{color:inherit}
+header{background:var(--azul);color:var(--blanco);position:sticky;top:0;z-index:5}
+.barra{max-width:1000px;margin:auto;padding:.7rem 1rem;display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;align-items:center;justify-content:space-between}
+.logo{font-weight:bold;font-size:1.1rem}
+nav{display:flex;flex-wrap:wrap;gap:.3rem 1rem}
+nav a{text-decoration:none;font-size:.95rem}
+nav a:hover{color:var(--sol)}
+.hero{background:var(--azul);color:var(--blanco);padding:3.5rem 1rem 4rem;border-bottom:8px solid var(--sol)}
+.hero div{max-width:1000px;margin:auto}
+.hero h1{font-size:clamp(2rem,6vw,3.4rem);margin:0 0 .5rem;line-height:1.1}
+.hero p{max-width:55ch;font-size:1.1rem}
+.btn{display:inline-block;background:var(--sol);color:#222;padding:.7rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:bold}
+section{max-width:1000px;margin:auto;padding:2.5rem 1rem}
+h2{color:var(--azul);font-size:1.7rem;margin:0 0 1rem;border-left:6px solid var(--sol);padding-left:.7rem}
+.fila{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.caja{background:var(--cielo);padding:1rem 1.2rem;border-radius:8px}
+.caja h3{margin:.2rem 0 .4rem;color:var(--azul)}
+.fecha{font-size:.85rem;color:var(--verde);font-weight:bold}
+table{width:100%;border-collapse:collapse;min-width:520px}
+.scroll{overflow-x:auto}
+th,td{border:1px solid #c5d3df;padding:.5rem .7rem;text-align:left}
+th{background:var(--azul);color:var(--blanco)}
+footer{background:var(--azul);color:#dbe7f2;padding:1.5rem 1rem;text-align:center;font-size:.9rem}
+</style>
+</head>
+<body>
+
+<header>
+<div class="barra">
+<span class="logo">Unidad Educativa Nuevo Horizonte</span>
+<nav>
+<a href="#inicio">Inicio</a>
+<a href="#noticias">Noticias</a>
+<a href="#oferta">Oferta académica</a>
+<a href="#horarios">Horarios</a>
+</nav>
+</div>
+</header>
+
+<div class="hero" id="inicio">
+<div>
+<h1>Una comunidad que aprende</h1>
+<p>Estudiantes, familias y docentes: noticias y horarios de la Unidad Educativa Nuevo Horizonte.</p>
+<a class="btn" href="#noticias">Ver noticias</a>
+</div>
+</div>
+
+<section id="institucion">
+<h2>la institución</h2>
+<div class="fila">
+<div class="caja"><h3>Misión</h3><p>Formar estudiantes íntegros y críticos, con valores y competencias para la vida.</p></div>
+<div class="caja"><h3>Visión</h3><p>Ser una institución reconocida por su excelencia académica y su compromiso con la comunidad.</p></div>
+<div class="caja"><h3>Valores</h3><p>Respeto, responsabilidad, honestidad y solidaridad.</p></div>
+</div>
+</section>
+
+<section id="noticias">
+<h2>Noticias y actividades escolares</h2>
+<div class="fila">
+<article class="caja"><span class="fecha">25 de noviembre</span><h3>Feria de ciencias</h3><p>Los estudiantes presentarán sus proyectos en el patio principal.</p></article>
+<article class="caja"><span class="fecha">2 de diciembre</span><h3>Reunión de padres de familia</h3><p>Entrega de informes del primer quimestre.</p></article>
+<article class="caja"><span class="fecha">10 de diciembre</span><h3>Programa de Navidad</h3><p>Presentaciones artísticas de todos los niveles.</p></article>
+</div>
+</section>
+
+<section id="oferta">
+<h2>Oferta académica</h2>
+<div class="fila">
+<div class="caja"><h3>Educación Inicial</h3><p>Subnivel 1 y 2.</p></div>
+<div class="caja"><h3>Educación General Básica</h3><p>Preparatoria a 10.º grado.</p></div>
+<div class="caja"><h3>Bachillerato General Unificado</h3><p>1.º a 3.º curso.</p></div>
+</div>
+</section>
+
+<section id="horarios">
+<h2>Horarios</h2>
+<div class="scroll">
+<table>
+<thead>
+<tr><th>Hora</th><th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th><th>Viernes</th></tr>
+</thead>
+<tbody>
+<tr><td>07:00 – 07:40</td><td>Matemática</td><td>Lengua</td><td>Ciencias</td><td>Inglés</td><td>Historia</td></tr>
+<tr><td>07:40 – 08:20</td><td>Matemática</td><td>Lengua</td><td>Ciencias</td><td>Inglés</td><td>Historia</td></tr>
+<tr><td>08:20 – 09:00</td><td>Lengua</td><td>Matemática</td><td>Informática</td><td>Ciencias</td><td>Cultura Física</td></tr>
+<tr><td>09:00 – 09:30</td><td colspan="5" style="text-align:center">Receso</td></tr>
+<tr><td>09:30 – 10:10</td><td>Inglés</td><td>Historia</td><td>Matemática</td><td>Lengua</td><td>Arte</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<footer>© 2026 Unidad Educativa Nuevo Horizonte</footer>
+
+</body>
+</html>
